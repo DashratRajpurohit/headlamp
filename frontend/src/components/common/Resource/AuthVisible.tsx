@@ -56,22 +56,24 @@ export interface AuthVisibleProps extends React.PropsWithChildren<{}> {
 export default function AuthVisible(props: AuthVisibleProps) {
   const { item, authVerb, subresource, namespace, onError, onAuthResult, children } = props;
 
-  if (!VALID_AUTH_VERBS.includes(authVerb)) {
-    console.warn(`Invalid authVerb provided: "${authVerb}". Skipping authorization check.`);
-    return null;
-  }
-
-  const itemClass: KubeObjectClass | null = (item as KubeObject)?._class?.() ?? item;
+  const itemClass: KubeObjectClass | null =
+    (item as KubeObject)?._class?.() ?? (item as KubeObjectClass);
   const itemName = (item as KubeObject)?.getName?.();
+  const isValidAuthVerb = VALID_AUTH_VERBS.includes(authVerb);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!isValidAuthVerb) {
+      console.warn(`Invalid authVerb provided: "${authVerb}". Skipping authorization check.`);
+    }
+  }, [authVerb, isValidAuthVerb]);
+
   const { data } = useQuery<any>({
-    enabled: !!item,
+    enabled: !!item && isValidAuthVerb,
     queryKey: [
       'authVisible',
       itemName,
-      itemClass.apiName,
-      itemClass.apiVersion,
+      itemClass?.apiName,
+      itemClass?.apiVersion,
       authVerb,
       subresource,
       namespace,
@@ -92,7 +94,6 @@ export default function AuthVisible(props: AuthVisibleProps) {
 
   const visible = data?.status?.allowed ?? false;
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (data) {
       onAuthResult?.({
@@ -102,6 +103,10 @@ export default function AuthVisible(props: AuthVisibleProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  if (!isValidAuthVerb) {
+    return null;
+  }
 
   if (!visible) {
     return null;
