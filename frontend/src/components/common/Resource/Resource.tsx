@@ -1147,24 +1147,16 @@ export function ContainerEnvironmentVariables(props: EnvironmentVariablesProps) 
     [enqueueSnackbar, t]
   );
 
-  // Early return if no env vars
-  if (
-    (!container?.env && !container?.envFrom) ||
-    !pod?.status?.containerStatuses ||
-    !pod?.metadata?.namespace
-  ) {
-    return null;
-  }
-
-  const namespace = pod.metadata.namespace;
+  const namespace = pod?.metadata?.namespace || '';
   const containerStartTimestamp = (() => {
-    let timestamp = pod.metadata?.creationTimestamp;
-    const containerStatus = pod.status?.containerStatuses?.find(c => c.name === container?.name);
+    let timestamp = pod?.metadata?.creationTimestamp;
+    const containerStatus = pod?.status?.containerStatuses?.find(c => c.name === container?.name);
     if (containerStatus?.started && containerStatus.state?.running?.startedAt) {
       timestamp = containerStatus.state.running.startedAt;
     }
     return timestamp;
   })();
+
 
   // Build variables from fetched resources
   const variables = buildEnvironmentVariables(
@@ -1281,6 +1273,15 @@ export function ContainerEnvironmentVariables(props: EnvironmentVariablesProps) 
       },
     },
   ];
+
+  const shouldRender =
+    (container?.env || container?.envFrom) &&
+    pod?.status?.containerStatuses &&
+    pod?.metadata?.namespace;
+
+  if (!shouldRender) {
+    return null;
+  }
 
   return (
     <>
